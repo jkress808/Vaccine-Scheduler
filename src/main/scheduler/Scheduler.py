@@ -360,10 +360,56 @@ def upload_availability(tokens):
 
 
 def cancel(tokens):
-    """
-    TODO: Extra Credit
-    """
-    pass
+    cm = ConnectionManager()
+    conn = cm.create_connection()
+
+    if len(tokens) != 2:
+        print("Please try again")
+        return
+    
+    if current_caregiver is None and current_patient is None:
+        print("Please login first")
+        return
+        
+    appointment = tokens[1]
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT Caregiver, Time, Vaccine FROM Reservations WHERE ID = ?",  (tokens[1],))
+        cancelapt = cursor.fetchall()
+        if cancelapt:
+           try:
+                caregiver = cancelapt[0][0]
+                time = cancelapt[0][1]
+                vaccine = cancelapt[0][2]
+                cursor.execute("UPDATE Vaccines SET Doses = Doses + 1 WHERE Name = ?", (vaccine, ))
+                cursor.execute("INSERT INTO Availabilities (Username, Time) VALUES (?, ?)", (caregiver, time))
+                cursor.execute("DELETE FROM Reservations WHERE ID = ?", (tokens[1],))
+                conn.commit()
+                print("Appointment ID " + tokens[1] + " has been successfully canceled")
+           except sqlite3.Error as e:
+                print("Please try again")
+                cm.close_connection()
+                return
+           except Exception as e:
+                print("Please try again")
+                cm.close_connection()
+                return
+           cm.close_connection()
+         
+        else:
+            print('Appointment ID ' + tokens[1] + ' does not exist')
+            return
+    except sqlite3.Error as e:
+                print("Please try again")
+                cm.close_connection()
+                return
+    except Exception as e:
+                print("Please try again")
+                cm.close_connection()
+                return
+    cm.close_connection()
+             
+    
 
 
 def add_doses(tokens):
@@ -542,7 +588,7 @@ def start():
             reserve(tokens)
         elif operation == "upload_availability":
             upload_availability(tokens)
-        elif operation == cancel:
+        elif operation == "cancel":
             cancel(tokens)
         elif operation == "add_doses":
             add_doses(tokens)
